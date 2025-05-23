@@ -1,0 +1,14 @@
+[project]
+name = "comfyui-openvino"
+description = ""
+version = "1.0.0"
+license = {file = "LICENSE"}
+
+[project.urls]
+Repository = "https://github.com/openvino-dev-samples/comfyui_openvino"
+#  Used by Comfy Registry https://comfyregistry.org
+
+[tool.comfy]
+PublisherId = ""
+DisplayName = "ComfyUI-OpenVINO"
+Icon = "https://avatars.githubusercontent.com/u/55443902?s=200&v=4"
