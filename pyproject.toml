@@ -1,6 +1,6 @@
 [project]
 name = "comfyui-openvino"
-description = ""
+description = "ComfyUI nodes for OpenVINO."
 version = "1.0.0"
 license = {file = "LICENSE"}
 
