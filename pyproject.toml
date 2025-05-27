@@ -1,6 +1,6 @@
 [project]
 name = "comfyui-openvino"
-description = "ComfyUI nodes for OpenVINO."
+description = "OpenVINO node is designed for optimizing the performance of model inference in ComfyUI by leveraging Intel OpenVINO toolkits. It can support running model on Intel CPU, GPU and NPU device."
 version = "1.0.0"
 license = {file = "LICENSE"}
 
