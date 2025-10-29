@@ -66,18 +66,17 @@ To trigger OpenVINO Node for ComfyUI, you can follow the example as reference:
     ```
     comfy launch -- --cpu --use-pytorch-cross-attention
     ```
-3. Prepare a standard workflow in ComfyUI.
+2. Prepare a standard workflow in ComfyUI.
    
-    ![Step 1](https://github.com/user-attachments/assets/30137084-242b-48ef-8713-fd999168c070)
+    ![Step 1](https://github.com/user-attachments/assets/b2f7af47-08c3-4734-beca-ee4af596a6d1)
 
-4. Add OpenVINO Node.
+3. Add OpenVINO Node.
    
-    ![Step 2](https://github.com/user-attachments/assets/0f9f2841-536b-4e05-8388-49ad219efefd)
-
-5. Connect OpenVINO Node with Model/LoRa Loader.
+    ![Step 2](https://github.com/user-attachments/assets/6f485fcb-af62-4c3c-8486-88937eef218b)
    
-    ![Step 3](https://github.com/user-attachments/assets/51d4de0f-c4d2-4e3a-9eb1-3942ef9354ca)
+4. Connect `TorchCompileDiffusionOpenVINO` with Diffusion model and `TorchCompileVAEOpenVINO` with VAE model
+    ![Step 3](https://github.com/user-attachments/assets/3414811a-13c0-4643-805b-86e9694e09e6)
 
 6. Run workflow. Please notice it may need an additional warm-up inference after switching new model.
    
-    ![Step 4](https://github.com/user-attachments/assets/37a354f2-86eb-4d2a-8ddc-6fc31439ad08)
+    ![Step 3](https://github.com/user-attachments/assets/b8f40c64-47b4-48a8-9c8a-87ccba4650b6)
