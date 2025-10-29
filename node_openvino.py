@@ -1,56 +1,50 @@
 import torch
 import openvino as ov
+from typing_extensions import override
 import openvino.frontend.pytorch.torchdynamo.execute as ov_ex
-import os
+from comfy_api.latest import ComfyExtension, io
 from comfy_api.torch_helpers import set_torch_compile_wrapper
 
-
-class TorchCompileModelOpenVINO:
+class TorchCompileModelOpenVINO(io.ComfyNode):
     @classmethod
-    def INPUT_TYPES(s):
+    def define_schema(cls) -> io.Schema:
         core = ov.Core()
         available_devices = core.available_devices
-        model_cache_option = ["OFF", "ON"]
-        return {
-            "required": {
-                "model": ("MODEL",),
-                "device": (available_devices,),
-                "model_cache": (model_cache_option,),
-            },
-        }
+        return io.Schema(
+            node_id="OpenVINO_TorchCompileModel",
+            category="OpenVINO",
+            inputs=[
+                io.Model.Input("model"),
+                io.Combo.Input(
+                    "device",
+                    options=available_devices,
+                ),
+            ],
+            outputs=[io.Model.Output()],
+            is_experimental=True,
+        )
 
-    RETURN_TYPES = ("MODEL",)
-    FUNCTION = "patch"
-
-    CATEGORY = "OpenVINO"
-    EXPERIMENTAL = True
-
-    def patch(self, model, device, model_cache):
-        model_cache_option = {"OFF": False, "ON": True}
-        cache_path = os.path.join(os.getcwd(), "openvino_model_cache")
-        options = {
-            "device": device,
-            "model_caching": model_cache_option[model_cache],
-            "cache_dir": cache_path,
-        }
+    @classmethod
+    def execute(cls, model, device) -> io.NodeOutput:
         torch._dynamo.reset()
         ov_ex.compiled_cache.clear()
         ov_ex.req_cache.clear()
         ov_ex.partitioned_modules.clear()
         m = model.clone()
+        set_torch_compile_wrapper(model=m, backend="openvino", options={"device": device})
+        return io.NodeOutput(m)
 
-        if model_cache_option[model_cache]:
-            print(f"Using the model cache from {cache_path}.")
-
-        set_torch_compile_wrapper(
-            m,
-            backend="openvino",
-            options=options,
-        )
-        return (m,)
+class OpenVINOTorchCompileExtension(ComfyExtension):
+    @override
+    async def get_node_list(self) -> list[type[io.ComfyNode]]:
+        return [
+            TorchCompileModelOpenVINO,
+        ]
 
 
-# The node ID in NODE_CLASS_MAPPINGS should be globally unique across ComfyUI ecosystem
+async def comfy_entrypoint() -> OpenVINOTorchCompileExtension:
+    return OpenVINOTorchCompileExtension()
+
 NODE_CLASS_MAPPINGS = {
     "OpenVINO_TorchCompileModel": TorchCompileModelOpenVINO,
 }
