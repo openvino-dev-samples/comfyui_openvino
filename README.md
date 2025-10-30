@@ -1,6 +1,7 @@
 # OpenVINO Node for ComfyUI
 
 This node is designed for optimizing the performance of model inference in ComfyUI by leveraging [Intel OpenVINO toolkits](https://github.com/openvinotoolkit/openvino).
+![comfyui](https://github.com/user-attachments/assets/9dfa5219-088f-4233-a0b5-a37954e5fbfb)
 
 
 --- 
