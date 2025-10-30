@@ -56,6 +56,7 @@ pip install -r requirements.txt
 ## Instruction
 To trigger OpenVINO Node for ComfyUI, you can follow the example as reference:
 1. Start a ComfyUI server.
+
    - lanuch from source:
     ```
     cd ComfyUI
@@ -66,15 +67,17 @@ To trigger OpenVINO Node for ComfyUI, you can follow the example as reference:
     ```
     comfy launch -- --cpu --use-pytorch-cross-attention
     ```
-2. Prepare a standard workflow in ComfyUI.
+    
+3. Prepare a standard workflow in ComfyUI.
    
     ![Step 1](https://github.com/user-attachments/assets/b2f7af47-08c3-4734-beca-ee4af596a6d1)
 
-3. Add OpenVINO Node.
+4. Add OpenVINO Node.
    
     ![Step 2](https://github.com/user-attachments/assets/6f485fcb-af62-4c3c-8486-88937eef218b)
    
-4. Connect `TorchCompileDiffusionOpenVINO` with Diffusion model and `TorchCompileVAEOpenVINO` with VAE model
+5. Connect `TorchCompileDiffusionOpenVINO` with Diffusion model and `TorchCompileVAEOpenVINO` with VAE model
+   
     ![Step 3](https://github.com/user-attachments/assets/3414811a-13c0-4643-805b-86e9694e09e6)
 
 6. Run workflow. Please notice it may need an additional warm-up inference after switching new model.
