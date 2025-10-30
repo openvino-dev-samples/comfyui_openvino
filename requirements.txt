@@ -1,5 +1,5 @@
 --extra-index-url https://storage.openvinotoolkit.org/simple/wheels/nightly
-openvino>=2025.4.0
+openvino>=2025.4.0.dev20251028
 torch>=2.2,<=2.6.0
 torchvision<=0.21.0
 torchaudio<=2.6.0
