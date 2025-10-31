@@ -1,4 +1,4 @@
-# OpenVINO Node for ComfyUI
+# 🔥OpenVINO Node for ComfyUI🔥
 
 This node is designed for optimizing the performance of model inference in ComfyUI by leveraging [Intel OpenVINO toolkits](https://github.com/openvinotoolkit/openvino).
 
@@ -16,12 +16,12 @@ This node is designed for optimizing the performance of model inference in Comfy
   - [Instruction](#instruction)
   - [Q&A](#qa)
 
-## Supported Hardware
+## 💻Supported Hardware
 
 This node can support running model on Intel CPU, GPU and NPU device.You can find more detailed informantion in [OpenVINO System Requirements](https://docs.openvino.ai/2025/about-openvino/release-notes-openvino/system-requirements.html).
 
 
-## Install
+## 🚗Install
 
 **Prererquisites**
 
@@ -56,7 +56,7 @@ cd comfyui_openvino
 pip install -r requirements.txt
 ```
 
-## Instruction
+## 🚀Instruction
 To trigger OpenVINO Node for ComfyUI, you can follow the example as reference:
 1. Start a ComfyUI server.
 
@@ -87,7 +87,7 @@ To trigger OpenVINO Node for ComfyUI, you can follow the example as reference:
    
     ![Step 3](https://github.com/user-attachments/assets/b8f40c64-47b4-48a8-9c8a-87ccba4650b6)
 
-## Q&A
+## 🤔Q&A
 
 1. **Does it support LoRA loader ?**
    
