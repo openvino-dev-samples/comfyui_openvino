@@ -14,6 +14,7 @@ This node is designed for optimizing the performance of model inference in Comfy
     - [ComfyUI-Manager](#comfyui-manager)
     - [Manual](#manual)
   - [Instruction](#instruction)
+  - [Q&A](#qa)
 
 ## Supported Hardware
 
@@ -85,3 +86,12 @@ To trigger OpenVINO Node for ComfyUI, you can follow the example as reference:
 6. Run workflow. Please notice it may need an additional warm-up inference after switching new model.
    
     ![Step 3](https://github.com/user-attachments/assets/b8f40c64-47b4-48a8-9c8a-87ccba4650b6)
+
+## Q&A
+
+1. **Does it support LoRa loader ?**
+   
+   Yes, and you can refer the following picture to add it to a workflow with OpenVINO node.
+
+   <img width="2000" height="805" alt="image" src="https://github.com/user-attachments/assets/ea1f7c6b-bbbc-4ee9-b5fd-62675d6aaa4e" />
+
