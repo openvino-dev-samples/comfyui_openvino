@@ -89,9 +89,9 @@ To trigger OpenVINO Node for ComfyUI, you can follow the example as reference:
 
 ## Q&A
 
-1. **Does it support LoRa loader ?**
+1. **Does it support LoRA loader ?**
    
-   Yes, and you can refer the following picture to add it to a workflow with OpenVINO node.
+   Yes, and you can refer the following picture to add it into a workflow of OpenVINO node.
 
    <img width="2000" height="805" alt="image" src="https://github.com/user-attachments/assets/ea1f7c6b-bbbc-4ee9-b5fd-62675d6aaa4e" />
 
