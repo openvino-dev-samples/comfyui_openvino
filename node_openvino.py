@@ -12,7 +12,7 @@ TORCH_COMPILE_KWARGS_VAE = "torch_compile_kwargs_vae"
 class VAECompileWrapper:
     """
     VAE compiler wrapper that mirrors set_torch_compile_wrapper
-    Dynamically swaps modules during forward instead of using setattr directly
+    Compiles high-level encode/decode entry points so pipeline semantics stay intact
     """
     def __init__(self, vae):
         self.vae = vae
@@ -26,49 +26,57 @@ class VAECompileWrapper:
         self.original_decode = None
 
     def compile(self, backend: str, options: Optional[dict] = None,
-               mode: Optional[str] = None, fullgraph=False, dynamic: Optional[bool] = None,
                keys: Optional[list[str]] = None):
         """Compile specified VAE modules"""
 
-        # Clean previous compilation
         if self.is_active:
             self.remove()
 
-        # Determine keys to compile
         if keys is None:
-            keys = []
             if hasattr(self.first_stage, "taesd_encoder"):
                 keys = ["taesd_encoder", "taesd_decoder"]
             else:
                 keys = ["encoder", "decoder"]
 
-        # Compile arguments
         compile_kwargs = {
             "backend": backend,
             "options": options,
-            "mode": mode,
-            "fullgraph": fullgraph,
-            "dynamic": dynamic,
         }
         compile_kwargs = {k: v for k, v in compile_kwargs.items() if v is not None}
 
-        # Compile each module
+        compiled_any = False
+
         for key in keys:
-            if not hasattr(self.first_stage, key):
-                continue
+            if "encoder" in key and hasattr(self.first_stage, "encode"):
+                try:
+                    if self.original_encode is None:
+                        self.original_encode = self.first_stage.encode
+                    compiled_encode = torch.compile(self.original_encode, **compile_kwargs)
+                    self.first_stage.encode = compiled_encode
+                    self.compiled_modules["encode"] = compiled_encode
+                    compiled_any = True
+                    print("✅ Successfully compiled VAE.encode")
+                except RuntimeError as e:
+                    print(f"❌ Failed to compile VAE.encode: {e}")
+                    if "encode" not in self.compiled_modules:
+                        self.original_encode = None
 
-            try:
-                original_module = getattr(self.first_stage, key)
-                # ✅ Only compile module without setattr
-                compiled_module = torch.compile(original_module, **compile_kwargs)
-                self.compiled_modules[key] = compiled_module
-                print(f"✅ Successfully compiled VAE.{key}")
-            except Exception as e:
-                print(f"❌ Failed to compile VAE.{key}: {e}")
+            if "decoder" in key and hasattr(self.first_stage, "decode"):
+                try:
+                    if self.original_decode is None:
+                        self.original_decode = self.first_stage.decode
+                    compiled_decode = torch.compile(self.original_decode, **compile_kwargs)
+                    self.first_stage.decode = compiled_decode
+                    self.compiled_modules["decode"] = compiled_decode
+                    compiled_any = True
+                    print("✅ Successfully compiled VAE.decode")
+                except RuntimeError as e:
+                    print(f"❌ Failed to compile VAE.decode: {e}")
+                    if "decode" not in self.compiled_modules:
+                        self.original_decode = None
 
-        if self.compiled_modules:
+        if compiled_any:
             self.compile_kwargs = compile_kwargs
-            self._wrap_forward_methods()
             self.is_active = True
 
             # Store into vae_options
@@ -76,74 +84,18 @@ class VAECompileWrapper:
                 self.vae.vae_options = {}
             self.vae.vae_options[TORCH_COMPILE_KWARGS_VAE] = compile_kwargs
 
-    def _wrap_forward_methods(self):
-        """Wrap encode/decode to use compiled modules at runtime"""
-
-        # Save original methods
-        if hasattr(self.first_stage, 'encode'):
-            self.original_encode = self.first_stage.encode
-            self.first_stage.encode = self._create_encode_wrapper()
-
-        if hasattr(self.first_stage, 'decode'):
-            self.original_decode = self.first_stage.decode
-            self.first_stage.decode = self._create_decode_wrapper()
-
-    def _create_encode_wrapper(self):
-        """Create encode wrapper"""
-        def encode_wrapper(x):
-            # Determine which encoder to use
-            encoder_key = "taesd_encoder" if "taesd_encoder" in self.compiled_modules else "encoder"
-
-            if encoder_key in self.compiled_modules:
-                # Temporarily replace encoder
-                original_encoder = getattr(self.first_stage, encoder_key)
-                try:
-                    # ✅ Use compiled encoder
-                    compiled_encoder = self.compiled_modules[encoder_key]
-                    return compiled_encoder(x)
-                except Exception as e:
-                    print(f"Compiled encoder execution failed, falling back to original: {e}")
-                    return original_encoder(x)
-            else:
-                # Use original method
-                return self.original_encode(x)
-
-        return encode_wrapper
-
-    def _create_decode_wrapper(self):
-        """Create decode wrapper"""
-        def decode_wrapper(z):
-            # Determine which decoder to use
-            decoder_key = "taesd_decoder" if "taesd_decoder" in self.compiled_modules else "decoder"
-
-            if decoder_key in self.compiled_modules:
-                # Temporarily replace decoder
-                original_decoder = getattr(self.first_stage, decoder_key)
-                try:
-                    # ✅ Use compiled decoder
-                    compiled_decoder = self.compiled_modules[decoder_key]
-                    return compiled_decoder(z)
-                except Exception as e:
-                    print(f"Compiled decoder execution failed, falling back to original: {e}")
-                    return original_decoder(z)
-            else:
-                # Use original method
-                return self.original_decode(z)
-
-        return decode_wrapper
-
     def remove(self):
         """Remove compilation wrapper"""
         if not self.is_active:
             return
 
-        # Restore original methods
-        if self.original_encode is not None:
+        if self.original_encode is not None and hasattr(self.first_stage, "encode"):
             self.first_stage.encode = self.original_encode
-        if self.original_decode is not None:
+            self.original_encode = None
+        if self.original_decode is not None and hasattr(self.first_stage, "decode"):
             self.first_stage.decode = self.original_decode
+            self.original_decode = None
 
-        # Clean up
         self.compiled_modules.clear()
         self.compile_kwargs.clear()
         self.is_active = False
