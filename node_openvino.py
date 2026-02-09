@@ -151,13 +151,15 @@ class TorchCompileVAEOpenVINO(io.ComfyNode):
                 io.Combo.Input("device", options=available_devices),
                 io.Boolean.Input("compile_encoder", default=True),
                 io.Boolean.Input("compile_decoder", default=True),
+                io.Boolean.Input("remove_compile", default=False,
+                               tooltip="Remove VAE compilation"),
             ],
             outputs=[io.Vae.Output()],
             is_experimental=True,
         )
 
     @classmethod
-    def execute(cls, vae, device, compile_encoder, compile_decoder) -> io.NodeOutput:
+    def execute(cls, vae, device, compile_encoder, compile_decoder, remove_compile) -> io.NodeOutput:
         torch._dynamo.reset()
         ov_ex.compiled_cache.clear()
         ov_ex.req_cache.clear()
@@ -168,6 +170,11 @@ class TorchCompileVAEOpenVINO(io.ComfyNode):
             vae._compile_wrapper = VAECompileWrapper(vae)
 
         wrapper = vae._compile_wrapper
+
+        # Remove compilation if requested
+        if remove_compile:
+            wrapper.remove()
+            return io.NodeOutput(vae)
 
         # Otherwise compile as requested
         keys = []
