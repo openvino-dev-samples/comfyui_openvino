@@ -97,7 +97,7 @@ To trigger OpenVINO Node for ComfyUI, you can follow the example as reference:
 
 2. **How to install ComfyUI-OpenVINO via ComfyUI-Manager in the Portable version of ComfyUI?**
 
-ComfyUI-Manager is **not enabled by default** in the Portable version. Follow the [official guide](https://docs.comfy.org/manager/install#portable-users) to enable it first.
+   ComfyUI-Manager is **not enabled by default** in the Portable version. Follow the [official guide](https://docs.comfy.org/manager/install#portable-users) to enable it first.
 
    Portable ComfyUI builds may not include Git, which is required for ComfyUI-Manager to work. It is recommended to download [Portable Git](https://git-scm.com/downloads/win) and explicitly set its path in your `.bat` launcher before starting ComfyUI:
    ```bat
