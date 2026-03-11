@@ -95,3 +95,75 @@ To trigger OpenVINO Node for ComfyUI, you can follow the example as reference:
 
    <img width="2000" height="805" alt="image" src="https://github.com/user-attachments/assets/ea1f7c6b-bbbc-4ee9-b5fd-62675d6aaa4e" />
 
+2. **How to install ComfyUI-OpenVINO via ComfyUI-Manager in the Portable version of ComfyUI?**
+
+   ComfyUI-Manager is **not enabled by default** in the Portable version. Follow the [official guide](https://docs.comfy.org/manager/install#portable-users) to enable it first.
+
+   Portable ComfyUI builds may not include Git, which is required for ComfyUI-Manager to work. It is recommended to download [Portable Git](https://git-scm.com/downloads/win) and explicitly set its path in your `.bat` launcher before starting ComfyUI:
+   ```bat
+   set GIT_PYTHON_GIT_EXECUTABLE=C:\path\to\portable-git\bin\git.exe
+   ```
+
+   After installing the extension via the Manager, make sure that the installed dependencies match the versions specified in:
+   ```
+   ComfyUI_windows_portable\ComfyUI\custom_nodes\comfyui-openvino\requirements.txt
+   ```
+   If newer versions were installed automatically, downgrade them to match. Note that the extension currently requires **torch <=2.6.0 and torchaudio <=2.6.0** specifically; if newer versions are already installed, downgrade them.
+
+3. **`RuntimeError: Compiler: 'cl' is not found` at higher resolutions — how to fix?**
+
+   At low resolutions (e.g. 512×512) the extension works fine. At higher resolutions, PyTorch's inductor triggers a JIT C++ compilation step that requires MSVC (`cl.exe`).
+
+   **Fix:** Install [Visual Studio](https://visualstudio.microsoft.com/) (Community edition is sufficient) or the standalone [MSVC Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/). During installation, make sure to select the **"Desktop development with C++"** workload — this is what actually installs `cl.exe` and the required C++ components.
+   Then activate the MSVC environment in your `.bat` launcher **before** starting ComfyUI:
+   ```bat
+   call "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat"
+   ```
+   Adjust the path to match your Visual Studio version and edition.
+
+5. **C++ compile error due to a space in the `torchinductor` cache folder name — how to fix?**
+
+   If your Windows display name (Full Name) contains a space (e.g. `John Doe`), PyTorch will create a temp folder like:
+   ```
+   C:\Users\John\AppData\Local\Temp\torchinductor_John Doe
+   ```
+   The space in the path breaks the MSVC compiler.
+
+   **Fix:** Override `USERNAME` in your `.bat` launcher before starting ComfyUI:
+   ```bat
+   set USERNAME=User
+   ```
+   This only affects the current session and does not change your Windows account. After this, PyTorch will create the temp folder as:
+   ```
+   C:\Users\John\AppData\Local\Temp\torchinductor_User
+   ```
+   
+   If your **Windows account folder name** (e.g. `C:\Users\John Doe\`) also contains a space, overriding `USERNAME` alone is not enough — the temp path will still be broken. In that case, redirect the temp directory to a path without spaces:
+   ```bat
+   set TEMP=C:\tmp
+   set TMP=C:\tmp
+   ```
+   Make sure the folder `C:\tmp` exists before launching ComfyUI.
+
+6. **`python_embeded` is missing Python headers/libraries for C++ compilation — how to fix?**
+
+   Portable ComfyUI uses a stripped-down embedded Python that is missing the `include` and `libs` directories required for C++ compilation.
+
+   **Fix:**
+   1. Download the full Python installer for the **same version** as your `python_embeded`.
+   2. Copy the `include` and `libs` folders from the full Python installation into your `ComfyUI_windows_portable\python_embeded\` directory.
+
+   After this, `cl.exe` will be able to compile successfully.
+
+   <details>
+   <summary>📄 Example <code>run_cpu.bat</code> with all fixes applied</summary>
+
+   ```bat
+   call "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat"
+   set USERNAME=User
+   set GIT_PYTHON_GIT_EXECUTABLE=C:\Users\John\ComfyUI_windows_portable\git\bin\git.exe
+   .\python_embeded\python.exe -s ComfyUI\main.py --cpu --windows-standalone-build --enable-manager --use-pytorch-cross-attention
+   pause
+   ```
+   </details>
+
