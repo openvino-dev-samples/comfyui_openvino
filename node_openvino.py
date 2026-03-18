@@ -9,6 +9,121 @@ from comfy_api.torch_helpers import set_torch_compile_wrapper
 TORCH_COMPILE_KWARGS_VAE = "torch_compile_kwargs_vae"
 
 
+_dynamo_workarounds_applied = False
+
+
+def _apply_dynamo_workarounds():
+    """Work around two PyTorch 2.10 issues with the OpenVINO torch.compile backend:
+
+    1. TorchDynamo bug in nn_module.py wrap_values() references undefined free variable
+       'named_children' instead of 'result'. Triggered when tracing self.parameters()
+       in ResBlock.forward(). Fix: monkey-patch ResBlock.forward to skip self.parameters()
+       when not checkpointing (params are unused in that branch anyway).
+
+    2. OpenVINO backend falls back to inductor (compile_fx) on any exception, but inductor's
+       C++ codegen requires omp.h which may be missing on Windows MSVC setups.
+       Fix: replace the inductor fallback with eager execution.
+    """
+    global _dynamo_workarounds_applied
+    if _dynamo_workarounds_applied:
+        return
+    _dynamo_workarounds_applied = True
+
+    # Fix 1: Patch ResBlock.forward to avoid self.parameters() call
+    try:
+        from comfy.ldm.modules.diffusionmodules.openaimodel import ResBlock
+        from comfy.ldm.modules.diffusionmodules.util import checkpoint
+
+        def _patched_forward(self, x, emb):
+            if self.use_checkpoint:
+                return checkpoint(
+                    self._forward, (x, emb), self.parameters(), self.use_checkpoint
+                )
+            return self._forward(x, emb)
+
+        ResBlock.forward = _patched_forward
+    except (ImportError, AttributeError):
+        pass
+
+    # Fix 2: In PyTorch 2.10, make_fx(tracing_mode="fake") crashes with
+    # "Cannot call numel() on tensor with symbolic sizes/strides" because
+    # PyTorch 2.10's fake tracing creates symbolic-shaped tensors that the
+    # C++ linear kernel can't handle. Fix: replace make_fx in the openvino
+    # backend's namespace so it uses tracing_mode="symbolic" instead.
+    # Also set allow_non_fake_inputs_override to prevent FakeTensor assertions.
+    try:
+        import openvino.frontend.pytorch.torchdynamo.backend as ov_backend
+        from torch._subclasses.fake_tensor import fake_tensor_tls
+
+        _original_make_fx = ov_backend.make_fx
+
+        def _patched_make_fx(*args, **kwargs):
+            if kwargs.get("tracing_mode") == "fake":
+                kwargs["tracing_mode"] = "symbolic"
+            return _original_make_fx(*args, **kwargs)
+
+        ov_backend.make_fx = _patched_make_fx
+
+        _original_fx_openvino = ov_backend.fx_openvino
+
+        def _patched_fx_openvino(subgraph, example_inputs, options=None):
+            old_override = fake_tensor_tls.allow_non_fake_inputs_override
+            fake_tensor_tls.allow_non_fake_inputs_override = True
+            try:
+                result = _original_fx_openvino(subgraph, example_inputs, options)
+                print(f"[OV-DEBUG] fx_openvino SUCCEEDED for subgraph")
+                return result
+            except Exception as e:
+                print(f"[OV-DEBUG] fx_openvino FAILED: {type(e).__name__}: {e}")
+                raise
+            finally:
+                fake_tensor_tls.allow_non_fake_inputs_override = old_override
+
+        ov_backend.fx_openvino = _patched_fx_openvino
+
+        # Fix 3: When fx_openvino fails, the openvino backend falls back to
+        # compile_fx (inductor), which requires omp.h missing on Windows MSVC.
+        # Replace compile_fx with eager execution so only the failing subgraphs
+        # fall back, while successful ones still run on OpenVINO GPU.
+        def _eager_fallback(subgraph, example_inputs):
+            import sys, traceback as tb
+            exc_info = sys.exc_info()
+            if exc_info[1]:
+                print(f"[OV-DEBUG] compile_fx fallback → eager. Exception: {exc_info[0].__name__}: {exc_info[1]}")
+                tb.print_exc()
+            else:
+                print(f"[OV-DEBUG] compile_fx fallback → eager (no active exception)")
+            return subgraph.forward
+
+        ov_backend.compile_fx = _eager_fallback
+    except (ImportError, AttributeError):
+        pass
+
+    # Fix 4: PyTorch 2.10 bug in symbolic_shapes.py — produce_guards_verbose()
+    # crashes with IndexError when symbol_to_source[symbol] is an empty list
+    # (triggered by conv shape guards). This happens AFTER successful backend
+    # compilation but BEFORE guards are installed, so it would discard the
+    # compiled OpenVINO code. Patch to return empty guards on IndexError,
+    # which means "always use this compiled version" (fine for fixed-shape inference).
+    try:
+        from torch.fx.experimental.symbolic_shapes import ShapeEnv, _ShapeGuardsHelper
+
+        _original_produce_guards_verbose = ShapeEnv.produce_guards_verbose
+
+        def _patched_produce_guards_verbose(self, *args, **kwargs):
+            try:
+                return _original_produce_guards_verbose(self, *args, **kwargs)
+            except IndexError:
+                # symbol_to_source[symbol] is empty — return empty guards
+                # so that compilation can proceed.
+                langs = kwargs.get("langs", ("python", "verbose_python"))
+                return [_ShapeGuardsHelper(exprs=[]) for _ in langs]
+
+        ShapeEnv.produce_guards_verbose = _patched_produce_guards_verbose
+    except (ImportError, AttributeError):
+        pass
+
+
 class VAECompileWrapper:
     """
     VAE compiler wrapper that mirrors set_torch_compile_wrapper
@@ -125,6 +240,7 @@ class TorchCompileDiffusionOpenVINO(io.ComfyNode):
     @classmethod
     def execute(cls, model, device) -> io.NodeOutput:
         torch._dynamo.reset()
+        _apply_dynamo_workarounds()
         ov_ex.compiled_cache.clear()
         ov_ex.req_cache.clear()
         ov_ex.partitioned_modules.clear()
@@ -161,6 +277,7 @@ class TorchCompileVAEOpenVINO(io.ComfyNode):
     @classmethod
     def execute(cls, vae, device, compile_encoder, compile_decoder, remove_compile) -> io.NodeOutput:
         torch._dynamo.reset()
+        _apply_dynamo_workarounds()
         ov_ex.compiled_cache.clear()
         ov_ex.req_cache.clear()
         ov_ex.partitioned_modules.clear()
