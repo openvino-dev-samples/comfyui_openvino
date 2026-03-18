@@ -244,6 +244,7 @@ class TorchCompileDiffusionOpenVINO(io.ComfyNode):
         ov_ex.compiled_cache.clear()
         ov_ex.req_cache.clear()
         ov_ex.partitioned_modules.clear()
+        ov_ex.max_openvino_partitions = 0
 
         m = model.clone()
         set_torch_compile_wrapper(
@@ -281,6 +282,7 @@ class TorchCompileVAEOpenVINO(io.ComfyNode):
         ov_ex.compiled_cache.clear()
         ov_ex.req_cache.clear()
         ov_ex.partitioned_modules.clear()
+        ov_ex.max_openvino_partitions = 0
 
         # Get or create wrapper
         if not hasattr(vae, '_compile_wrapper'):
