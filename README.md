@@ -117,11 +117,13 @@ Portable ComfyUI builds may not include Git, which is required for ComfyUI-Manag
 set GIT_PYTHON_GIT_EXECUTABLE=C:\path\to\portable-git\bin\git.exe
 ```
 
-After installing the extension via the Manager, make sure that the installed dependencies match the versions specified in:
+After installing the extension via the Manager, make sure that the installed dependencies match the versions specified in `ComfyUI\custom_nodes\comfyui-openvino\requirements.txt`.
+
+It is always considered good practice, after installing (or updating) the ComfyUI-OpenVINO extension, to run
 ```
-ComfyUI_windows_portable\ComfyUI\custom_nodes\comfyui-openvino\requirements.txt
+.\python_embeded\python.exe -m pip install -r ComfyUI\custom_nodes\comfyui-openvino\requirements.txt
 ```
-If newer versions were installed automatically, downgrade them to match. Note that the extension currently requires **torch <=2.6.0 and torchaudio <=2.6.0** specifically; if newer versions are already installed, downgrade them.
+to ensure that all required dependencies are installed.
 
 </details>
 
